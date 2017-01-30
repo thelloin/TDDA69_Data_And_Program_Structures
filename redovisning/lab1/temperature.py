@@ -1,4 +1,4 @@
-from constraints import Connector, Adder, Multiplier, Constant
+from constraints import Connector, Adder, Multiplier, Constant, ConnectorError
 
 # Defines a conversion network.
 def temperature_converter(c,f):
@@ -22,5 +22,9 @@ temperature_converter(c,f)
 c.show_updates = True
 f.show_updates = True
 c.set_value(100, "user")
-f.set_value(123, "user")
+try:
+  f.set_value(123, "user")
+except ConnectorError:
+  print("ConnectorError occured!")
 c.forget("user")
+f.set_value(123, "user")

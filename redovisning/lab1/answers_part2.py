@@ -72,6 +72,10 @@ g(5000)
 
 """ 2.3 a) Look at account.py. """
 
-""" 2.3 b) TODO: draw a environment diagram.
+""" 2.3 b) TODO: draw a environment diagram. """
+
+""" 3.0.1 a) Implemented in constraints.py
+
+          b) answered at the end of file constraints.py """
 
     

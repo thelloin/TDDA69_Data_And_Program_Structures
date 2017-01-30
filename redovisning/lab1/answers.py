@@ -32,24 +32,33 @@ print(sum_iter( lambda x: x, 1, lambda x: x+1, 4  ))
     is given as arguments with the recursive call.
 """
 
-""" 1.2 a) In a similar fashion, define product and product_iter which computer products.
+""" 1.2 a) In a similar fashion, define product and product_iter which computes products.
 """
 
 def product(term, lower, successor, upper):
-    def product_iter(lower, result):
+    if lower > upper:
+        return 1
+    else:
+        return term(lower) * product(term, successor(lower), successor, upper)
+
+print("Testing product (expected value 12)")
+print(product(lambda x: x, 3, lambda x: x + 1, 4))
+
+def product_iter(term, lower, successor, upper):
+    def iter(lower, result):
         if lower > upper:
             return result
         else:
-            return product_iter(successor(lower), term(lower) * result)
-    return product_iter(lower, 1)
+            return iter(successor(lower), term(lower) * result)
+    return iter(lower, 1)
 
-print("Testing product (expected value 12)")
-print(product( lambda x: x, 3, lambda x: x + 1, 4 ))
+print("Testing product_iter (expected value 12)")
+print(product_iter( lambda x: x, 3, lambda x: x + 1, 4 ))
 
 """ 1.2 b) Define factorial using one of the functions above """
 
 def factorial(term, successor, n):
-    return product(term, 1, successor, n)
+    return product_iter(term, 1, successor, n)
 
 print("Testing factorial (expected value 24)")
 print(factorial(lambda x: x, lambda x: x+1, 4))
@@ -58,7 +67,7 @@ print(factorial(lambda x: x, lambda x: x+1, 4))
     product functions. """
 
 print("Testing calculating pi using Wallis product:")
-print(2*product(lambda x: (2*x/(2*x-1))*(2*x/(2*x+1)), 1, lambda x: x+1, 500))
+print(2*product_iter(lambda x: (2*x/(2*x-1))*(2*x/(2*x+1)), 1, lambda x: x+1, 500))
 
 # Testing using sum_iter as the book:
 print("Testing calculating pi using sum_iter...")
@@ -179,10 +188,10 @@ print(reverse_l([1,2,3,4]))
     and returns the function f^n. """
 
 def repeat(f, n):
-    if n > 1:
+    if n > 0:
         rep_func = repeat(f, n - 1)
         return lambda x: f(rep_func(x))
-    return f # if return lambda x: x, then 1.6 b is working properly but not 1.5a.....
+    return lambda x: x
 
 print("Testing repeat (expected value: 625)")
 sq = lambda x: x*x
@@ -224,7 +233,8 @@ print("Testing smooth")
 smoothed_sq = smooth(lambda x: x*x)
 print(smoothed_sq(4))
 
-# TODO: not working, NOW it is!!!
+""" 1.6 b) Write a procedure n_fold_smooth that takes f and n>=0 as input and, using
+    your repeat function, returns the n-fold smoothed version of f. """
 def n_fold_smooth(f, n):
     return repeat(smooth, n)(f)
 
@@ -232,4 +242,4 @@ print("Testing n_fold_smooth")
 five_smoothed_square = n_fold_smooth(lambda x: x*x, 5)
 print(five_smoothed_square(4))
 regular_sq = n_fold_smooth(lambda x: x*x, 0)
-print(regular_sq(5)) # This gives the wrong answer, probably something wrong with repeat...
+print(regular_sq(5))

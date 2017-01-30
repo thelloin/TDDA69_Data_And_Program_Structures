@@ -2,6 +2,8 @@
 
 Translated from R6RS Scheme in 2015."""
 
+import math
+
 # Connectors
 class ConnectorError(Exception):
   def __init__(self, name, old, new):
@@ -113,8 +115,41 @@ class Multiplier:
     self.process()
 
    
+class Squarer:
+  def __init__(self, v1_, v2_, name_ = "Squarer"):
+    self.v1 = v1_
+    self.v2 = v2_
+    self.name = name_
+    v1_.connect(self)
+    v2_.connect(self)
+  
+  def process(self):
+    v1, v2 = self.v1, self.v2
     
+    if v1.has_value():
+      v2.set_value(v1.value ** 2, self)
+    elif v2.has_value():
+      v1.set_value(math.sqrt(v2.value), self)
+  
+  def forget(self):
+    self.v1.forget(self)
+    self.v2.forget(self)
+    self.process()
 
 
 """ Test case"""
+print("Doing some tests with squarer")
+v1_test = Connector("v1")
+v2_test = Connector("v2")
+v1_test.show_updates = True
+v2_test.show_updates = True
+Squarer(v1_test, v2_test)
+v1_test.set_value(2, "user")
+v1_test.forget("user")
+v1_test.set_value(5, "user")
+v1_test.forget("user")
+v2_test.set_value(9, "user")
 
+""" 3.0.1 b) The problem is that the function f(x) = x^2 is not injective from the set of real
+    numbers. For example is f(2) = f(-2) = 4 so the function can not be reversed. So, ideally
+    you would want an injective function. """
