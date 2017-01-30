@@ -199,7 +199,12 @@ sq_twice = repeat(sq, 2)
 print(type(sq_twice))
 print(sq_twice(5))
 
-""" 1.5 b) If you were to write a type signature for f above, what would it be? """
+""" 1.5 b) What properties would we like to have, if f is to work as above(in terms of
+    domain and image)? If you were to write a type signature for f above, what would 
+    it be? 
+
+    The function f must have the properties that the image of f should be a subset of
+    the domain so we can reapply f on the result. """
 
 # TODO
 
