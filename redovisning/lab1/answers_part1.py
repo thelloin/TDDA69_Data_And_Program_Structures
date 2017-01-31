@@ -206,8 +206,6 @@ print(sq_twice(5))
     The function f must have the properties that the image of f should be a subset of
     the domain so we can reapply f on the result. """
 
-# TODO
-
 """ 1.5 c) Define a function compose that takes one-parameters f and g and returns
     f(g(x)). """
 

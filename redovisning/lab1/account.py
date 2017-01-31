@@ -19,7 +19,7 @@ def make_account(balance, interest):
       raise AccountError("Account balance too low")
       
   def deposit(amount, time):
-    #nonlocal balance
+    nonlocal balance
     nonlocal t
     if time <= t:
       raise AccountError("Timestamp error")

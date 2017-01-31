@@ -48,9 +48,9 @@ g(5000)
     In g:  5000
     In f:  0
 
-    When the function pointer print_mess is created a closure of variable value is
+    When the function pointer print_mess is created a closure of variable 'value' is
     created where value = "Stored", so when print_mess is called it uses that
-    variable and the global value of x.
+    variable and the global variable 'value'.
 
     When calling g(5000), the first print statement print the value of the parameter
     x which is 5000 and then calls f(). In this function body x refers to the global
@@ -59,7 +59,7 @@ g(5000)
     We then change the global variable x to 0 and calls g(5000) which result in the
     same output except that in the function body of f, x is now 0. """
 
-""" 2.2 b) TODO """
+""" 2.2 b) Handed in separately """
 
 """ 2.2 c) If python had dynamic scoping the output that would change would be 
            In f: 10 --> In f: 5000
@@ -72,7 +72,7 @@ g(5000)
 
 """ 2.3 a) Look at account.py. """
 
-""" 2.3 b) TODO: draw a environment diagram. """
+""" 2.3 b) Handed in separately """
 
 """ 3.0.1 a) Implemented in constraints.py
 
