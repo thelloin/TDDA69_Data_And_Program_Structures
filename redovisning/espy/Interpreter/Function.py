@@ -22,7 +22,11 @@ class Function:
     This creates a new function with a set of args (which is an array of string with the name of the variables used as arguments), the global environment
     used when defining the function and a lambda function defining the body to be called (should take one single argument, which is the environment)
     '''
-    pass
+
+    self.args = args
+    self.environment = environment
+    self.body = body
+
   def call(self, that, this, *args):
     '''
     Call the function. This function is usefull since in ECMAScript, a function is an object and it can be called with the function "call". For instance:
@@ -47,9 +51,25 @@ class Function:
     * this is the pointer to the object (equivalent of self in python)
     * args is the list of arguments passed to the function
     '''
-    pass
+
+    # Should you create a new Environment here and add the args to that env?
+    current_env = Environment(self.environment)
+    for i in range(len(args)):
+      current_env.defineVariable(self.args[i], args[i])
+    # Add 'this' and 'that' to current_env??
+    current_env.defineVariable('this', this)
+    current_env.defineVariable('that', that)
+    return self.body(current_env)
+
   def __call__(self, this, *args):
     '''
     Call the function. With the this argument.
     '''
-    pass
+
+    #current_env = Environment(self.environment)
+    #for i in range(len(args)):
+    #  current_env.defineVariable(self.args[i], args[i])
+    # Add 'this' to current_env??
+    #current_env.defineVariable('this', this)
+    #return self.body(current_env)
+    return self.call(None, this, *args)
