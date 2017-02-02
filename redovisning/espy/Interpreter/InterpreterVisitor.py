@@ -2,6 +2,7 @@ import antlr4
 import Utils
 
 from ECMAScriptParser import ECMAScriptVisitor
+from ECMAScriptParser import ECMAScriptLexer
 
 from Interpreter.Console import Console
 from Interpreter.Math import MathModule
@@ -17,7 +18,27 @@ class InterpreterVisitor(ECMAScriptVisitor):
       self.environment.defineVariable("Object", ObjectModule())
 
     def visitTerminal(self, node):
-      return node.symbol.text
+      #print("Type of text: ", type(node.symbol.text))
+      #print("Value of type: ", node.symbol.type)
+      # TODO: convert numberic values to correct type
+      if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.BooleanLiteral: # 54
+          if node.symbol.text == 'true':
+              return True
+          elif node.symbol.text == 'false':
+              return False
+      elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DecimalLiteral: # 55
+          # Not sure if were supposed to ever return int
+          try:
+              return int(node.symbol.text)
+          except ValueError:
+              return float(node.symbol.text)
+      elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.HexIntegerLiteral: # 56
+          return float(int(node.symbol.text, 0))
+      elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.StringLiteral: # 101
+          # Assume that a string atleast contains ""?
+          return node.symbol.text[1:-1]
+      else:
+          return node.symbol.text
     
     # Visit a parse tree produced by ECMAScriptParser#PropertyExpressionAssignment.
     def visitPropertyExpressionAssignment(self, ctx):
@@ -113,7 +134,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#numericLiteral.
     def visitNumericLiteral(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        return self.visitTerminal(ctx.children[0])
 
 
     # Visit a parse tree produced by ECMAScriptParser#ForInStatement.
@@ -255,7 +277,11 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#literal.
     def visitLiteral(self, ctx):
-      return child.accept(self)
+      #print("The length of ctx.children:")
+      #print(len(ctx.children))
+      #return child.accept(self)
+      #print("Type of child: ", type(ctx.children[0]))
+      return ctx.children[0].accept(self)
 
 
     # Visit a parse tree produced by ECMAScriptParser#variableStatement.
