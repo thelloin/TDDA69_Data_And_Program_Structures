@@ -95,6 +95,12 @@ class InterpreterVisitor(ECMAScriptVisitor):
         node = ctx.children[1]
         if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Plus: # 17
             return ctx.children[0].accept(self) + ctx.children[2].accept(self)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Minus: # 18
+            return ctx.children[0].accept(self) - ctx.children[2].accept(self)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Multiply: # 21
+            return ctx.children[0].accept(self) * ctx.children[2].accept(self)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Divide: # 22
+            return ctx.children[0].accept(self) / ctx.children[2].accept(self)
         else:
             raise Utils.UnimplementedVisitorException(ctx)
 
@@ -272,7 +278,19 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#UnaryExpression.
     def visitUnaryExpression(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #print("################### ", ctx.children[0].symbol.text)
+        #print("################### ", ctx.children[0].symbol.type)
+        node = ctx.children[0]
+        if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Minus: # 18
+            return - ctx.children[1].accept(self)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Plus: # 17
+            return ctx.children[1].accept(self)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.BitNot: # 19
+            return float(~ int(ctx.children[1].accept(self)))
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Not: # 20
+            return not bool(ctx.children[1].accept(self))
+        else:
+            raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#WhileStatement.
@@ -337,7 +355,11 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#ParenthesizedExpression.
     def visitParenthesizedExpression(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #print("##################################")
+        #print("First child: ", ctx.children[0].symbol.text)
+        #print("Second child: ", ctx.children[2].symbol.text)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        return ctx.children[1].accept(self)
 
 
     # Visit a parse tree produced by ECMAScriptParser#objectLiteral.
