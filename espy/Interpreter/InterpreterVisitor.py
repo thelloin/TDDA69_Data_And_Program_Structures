@@ -18,9 +18,6 @@ class InterpreterVisitor(ECMAScriptVisitor):
       self.environment.defineVariable("Object", ObjectModule())
 
     def visitTerminal(self, node):
-      #print("Type of text: ", type(node.symbol.text))
-      #print("Value of type: ", node.symbol.type)
-      # TODO: convert numberic values to correct type
       if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.BooleanLiteral: # 54
           if node.symbol.text == 'true':
               return True
@@ -28,10 +25,12 @@ class InterpreterVisitor(ECMAScriptVisitor):
               return False
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DecimalLiteral: # 55
           # Not sure if were supposed to ever return int
-          try:
+          # Changes this because test 02_expression/01_addition expects float as result
+          """try:
               return int(node.symbol.text)
           except ValueError:
-              return float(node.symbol.text)
+              return float(node.symbol.text) """
+          return float(node.symbol.text)
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.HexIntegerLiteral: # 56
           return float(int(node.symbol.text, 0))
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.StringLiteral: # 101
@@ -89,10 +88,15 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#BinaryExpression.
     def visitBinaryExpression(self, ctx):
-        print("# of children: ", len(ctx.children))
-        print("# of children of b_context: ", len(ctx.children[0].children))
-        print(ctx.children[1].symbol.text)
-        raise Utils.UnimplementedVisitorException(ctx)
+        #print("# of children: ", len(ctx.children))
+        #print("# of children in b_context: ", len(ctx.children[0].children))
+        #print("types of children in b_context: ", ctx.children[0].children)
+        #print(ctx.children[1].symbol.type)
+        node = ctx.children[1]
+        if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Plus: # 17
+            return ctx.children[0].accept(self) + ctx.children[2].accept(self)
+        else:
+            raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#futureReservedWord.
@@ -137,8 +141,21 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#numericLiteral.
     def visitNumericLiteral(self, ctx):
+        """print("In visitNumericalLiteral #########################")
+        print("Type of context: ", type(ctx))
+        print("Length of children: ", len(ctx.children))
+        print("Type of children[0]: ", type(ctx.children[0]))
+        node = ctx.children[0]
+        if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DecimalLiteral:
+            try:
+                return int(node.symbol.text)
+            except ValueError:
+                return float(node.symbol.text)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.HexIntegerLiteral:
+            return float(int(node.symbol.text, 0))
+        """
+        return ctx.children[0].accept(self)
         #raise Utils.UnimplementedVisitorException(ctx)
-        return self.visitTerminal(ctx.children[0])
 
 
     # Visit a parse tree produced by ECMAScriptParser#ForInStatement.
@@ -280,11 +297,12 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#literal.
     def visitLiteral(self, ctx):
-      #print("The length of ctx.children:")
-      #print(len(ctx.children))
-      #return child.accept(self)
-      #print("Type of child: ", type(ctx.children[0]))
-      return ctx.children[0].accept(self)
+      #print("Type of ctx: ", type(ctx))
+      #print("Length of children: ", len(ctx.children))
+      #print("Type of children[0]: ", type(ctx.children[0]))
+      res = ctx.children[0].accept(self)
+      #print("Type of result: ", type(res))
+      return res
 
 
     # Visit a parse tree produced by ECMAScriptParser#variableStatement.
@@ -324,6 +342,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#objectLiteral.
     def visitObjectLiteral(self, ctx):
+        print("visitObjectLiteral - #################################")
         raise Utils.UnimplementedVisitorException(ctx)
 
 
