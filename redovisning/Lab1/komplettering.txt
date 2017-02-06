@@ -1,0 +1,4 @@
+""" 3.0.1 b) The problem is that the function f(x) = x^2 is not injective from the set of real
+    numbers. For example is f(2) = f(-2) = 4. The sort of function that you want is a function
+    that is reversible. For a function to be reversible it must be bijective; that is, both
+    injective and surjective. """

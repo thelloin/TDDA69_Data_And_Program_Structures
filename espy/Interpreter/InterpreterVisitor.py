@@ -89,6 +89,9 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#BinaryExpression.
     def visitBinaryExpression(self, ctx):
+        print("# of children: ", len(ctx.children))
+        print("# of children of b_context: ", len(ctx.children[0].children))
+        print(ctx.children[1].symbol.text)
         raise Utils.UnimplementedVisitorException(ctx)
 
 
