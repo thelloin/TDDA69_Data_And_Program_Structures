@@ -26,11 +26,12 @@ class InterpreterVisitor(ECMAScriptVisitor):
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DecimalLiteral: # 55
           # Not sure if were supposed to ever return int
           # Changes this because test 02_expression/01_addition expects float as result
-          """try:
+          # Change back to make the ease of implementing binary_ops easier
+          try:
               return int(node.symbol.text)
           except ValueError:
-              return float(node.symbol.text) """
-          return float(node.symbol.text)
+              return float(node.symbol.text)
+          #return float(node.symbol.text)
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.HexIntegerLiteral: # 56
           return float(int(node.symbol.text, 0))
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.StringLiteral: # 101
@@ -91,16 +92,52 @@ class InterpreterVisitor(ECMAScriptVisitor):
         #print("# of children: ", len(ctx.children))
         #print("# of children in b_context: ", len(ctx.children[0].children))
         #print("types of children in b_context: ", ctx.children[0].children)
-        #print(ctx.children[1].symbol.type)
+        #print("###############################")
+        #print("Type of operator: ", ctx.children[1].symbol.type)
         node = ctx.children[1]
+        op1 = ctx.children[0].accept(self)
+        op2 = ctx.children[2].accept(self)
+        # Only convert to int if type is float
+        if isinstance(op1, float) and op1 == int(op1):
+            op1 = int(op1)
+        if isinstance(op2, float) and op2 == int(op2):
+            op2 = int(op2)
         if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Plus: # 17
-            return ctx.children[0].accept(self) + ctx.children[2].accept(self)
+            return float(op1 + op2)
         elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Minus: # 18
-            return ctx.children[0].accept(self) - ctx.children[2].accept(self)
+            return float(op1 - op2)
         elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Multiply: # 21
-            return ctx.children[0].accept(self) * ctx.children[2].accept(self)
+            return float(op1 * op2)
         elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Divide: # 22
-            return ctx.children[0].accept(self) / ctx.children[2].accept(self)
+            return float(op1 / op2)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Modulus: # 23
+            return float(op1 % op2)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.LeftShiftArithmetic: # 25
+            return float(op1 << op2)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.RightShiftArithmetic: # 24
+            return float(op1 >> op2)
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.RightShiftLogical: # 26
+            return float( (op1 % 0x100000000)>>op2 )
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.LessThan: # 27
+            return op1 < op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.MoreThan: # 28
+            return op1 > op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.LessThanEquals: # 29
+            return op1 <= op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.GreaterThanEquals: # 30
+            return op1 >= op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Equals: # 31
+            return op1 == op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.NotEquals: # 32
+            return not op1 == op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.IdentityEquals: # 33
+            return op1 is op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.IdentityNotEquals: # 34
+            return op1 is not op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.And: # 38
+            return op1 and op2
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Or: # 39
+            return op1 or op2
         else:
             raise Utils.UnimplementedVisitorException(ctx)
 
@@ -282,9 +319,9 @@ class InterpreterVisitor(ECMAScriptVisitor):
         #print("################### ", ctx.children[0].symbol.type)
         node = ctx.children[0]
         if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Minus: # 18
-            return - ctx.children[1].accept(self)
+            return - float(ctx.children[1].accept(self))
         elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Plus: # 17
-            return ctx.children[1].accept(self)
+            return float(ctx.children[1].accept(self))
         elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.BitNot: # 19
             return float(~ int(ctx.children[1].accept(self)))
         elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Not: # 20
