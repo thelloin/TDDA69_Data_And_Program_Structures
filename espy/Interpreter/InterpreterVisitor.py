@@ -3,12 +3,17 @@ import Utils
 
 from ECMAScriptParser import ECMAScriptVisitor
 from ECMAScriptParser import ECMAScriptLexer
+from ECMAScriptParser import ECMAScriptParser
 
 from Interpreter.Console import Console
 from Interpreter.Math import MathModule
 from Interpreter.Environment import Environment
 from Interpreter.Object import Object, ObjectModule
 
+# What to do: Are about to implement continue statement.
+# Should probably change in visitStatementList to not use visitChildren
+# could write own iteration and check each result of the statements
+# to see if a break or continue statement has been evaluated.
 class InterpreterVisitor(ECMAScriptVisitor):
 
     def __init__(self, environment = Environment(), input=None):
@@ -26,7 +31,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DecimalLiteral: # 55
           # Not sure if were supposed to ever return int
           # Changes this because test 02_expression/01_addition expects float as result
-          # Change back to make the ease of implementing binary_ops easier
+          # Change back to make the implementation of binary_ops easier
           try:
               return int(node.symbol.text)
           except ValueError:
@@ -47,7 +52,22 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#assignmentOperator.
     def visitAssignmentOperator(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # Idea is to return a lambda which performs the right operator
+        #print("//////////////")
+        #print(ctx.children[0].symbol.type)
+        node = ctx.children[0]
+        if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Assign: # 11
+            return lambda x, y: y
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.PlusAssign: # 43
+            return lambda x, y: x + y
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.MinusAssign: # 44
+            return lambda x, y: x - y
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.MultiplyAssign: # 40
+            return lambda x, y: x * y
+        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DivideAssign: # 41
+            return lambda x, y: x / y
+        else:
+            raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#eos.
@@ -149,12 +169,17 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#initialiser.
     def visitInitialiser(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        return ctx.children[1].accept(self)
 
 
     # Visit a parse tree produced by ECMAScriptParser#statementList.
     def visitStatementList(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        res = self.visitChildren(ctx)
+        print("type of res:", type(res))
+        print("res:", res)
+        return res
 
 
     # Visit a parse tree produced by ECMAScriptParser#PropertyGetter.
@@ -164,7 +189,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#block.
     def visitBlock(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        return ctx.children[1].accept(self)
 
 
     # Visit a parse tree produced by ECMAScriptParser#expressionStatement.
@@ -208,7 +234,9 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#emptyStatement.
     def visitEmptyStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        # Note: not sure what this is supposed to do
+        return
 
 
     # Visit a parse tree produced by ECMAScriptParser#labelledStatement.
@@ -260,17 +288,39 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#incrementOperator.
     def visitIncrementOperator(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # Return a lambda based on what type of operator
+        if ctx.children[0].symbol.type == ECMAScriptLexer.ECMAScriptLexer.PlusPlus:
+            return lambda x: x + 1
+        elif ctx.children[0].symbol.type == ECMAScriptLexer.ECMAScriptLexer.MinusMinus:
+            return lambda x: x - 1
+        else:
+            raise Utils.UnimplementedVisitorException(ctx)
+        
 
 
     # Visit a parse tree produced by ECMAScriptParser#AssignmentOperatorExpression.
     def visitAssignmentOperatorExpression(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #print("%%%%%%%%%%%%%¤¤¤¤¤¤¤¤¤¤¤")
+        #print(ctx.children[0].accept(self))
+        var_name = ctx.children[0].accept(self)
+        func = ctx.children[1].accept(self)
+        value = ctx.children[2].accept(self)
+        #print("value: ", value)
+        res = func(self.environment.value(var_name), value)
+        #print("Result to be stored: ", res)
+        self.environment.setVariable(var_name, res)
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#PostUnaryAssignmentExpression.
     def visitPostUnaryAssignmentExpression(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        var_name = ctx.children[0].accept(self)
+        func = ctx.children[1].accept(self)
+        old_value = self.environment.value(var_name)
+        res = func(old_value)
+        self.environment.setVariable(var_name, res)
+        return float(old_value)
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#TernaryExpression.
@@ -290,7 +340,16 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#DoStatement.
     def visitDoStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #Evaluate the body first one time
+        #print("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        #print("The value of i before:",self.environment.value("i"))
+        ctx.children[1].accept(self)
+        #print("The value of i after:",self.environment.value("i"))
+        #print("Res of eval:", ctx.children[4].accept(self))
+        while ctx.children[4].accept(self):
+            if ctx.children[1].accept(self) == "BREAK-LOOP":
+                break
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#ObjectLiteralExpression.
@@ -332,7 +391,23 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#WhileStatement.
     def visitWhileStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #print("In while statement")
+        #print("res of expr:", ctx.children[2].accept(self))
+        #print("res of statements", ctx.children[4].accept(self))
+        #raise Utils.UnimplementedVisitorException(ctx)
+        #i = 0
+        #print("hej")
+        #print(ctx.children[2].accept(self))
+        while ctx.children[2].accept(self):
+            res = ctx.children[4].accept(self)
+            if res == "BREAK-LOOP":
+                break
+            elif res == "CONTINUE":
+                continue
+            #i = i + 1
+            #if i == 4:
+            #    break
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#returnStatement.
@@ -362,7 +437,16 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#variableStatement.
     def visitVariableStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # TODO: should probably somehow check if the variable already has been declared /
+        # perhaps return variable_name and value as a tuple and then check...
+        #var_name, value = ctx.children[1].accept(self)
+        #self.environment.defineVariable(var_name, value)
+        #print("IN VARIABLE STATEMENT line: 422")
+        #print(ctx.children)
+        args = ctx.children[1].accept(self)
+        for name, value in args:
+            self.environment.defineVariable(name, value)
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#FunctionExpression.
@@ -377,12 +461,64 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#statement.
     def visitStatement(self, ctx):
-      self.visitChildren(ctx)
+      return self.visitChildren(ctx)
 
+    class MockExpression(object):
+        def __init__(self):
+            self.v = True
+        def accept(self, ctx):
+            return True
 
     # Visit a parse tree produced by ECMAScriptParser#ForStatement.
     def visitForStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # This is working for the tests but there are alot of variations
+        # of the for-loop that will not break, most of which will happen
+        # when there is a variable definition in a statement.
+        expression1 = InterpreterVisitor.MockExpression()
+        expression2 = InterpreterVisitor.MockExpression()
+        expression3 = InterpreterVisitor.MockExpression()
+        # Three different cases to consider: 0,1,2 och 3(all) statements missing
+        if len(ctx.children) == 10:
+            # Not a really good solution, not generic at all...
+            args = ctx.children[3].accept(self)
+            for name, value in args:
+                self.environment.defineVariable(name,value)
+            expression2 = ctx.children[5]
+            expression3 = ctx.children[7]
+        elif len(ctx.children) == 9: # All statements provided
+            expression1 = ctx.children[2]
+            expression2 = ctx.children[4]
+            expression3 = ctx.children[6]
+        elif len(ctx.children) == 8: # One statement missing
+            # Find which one
+            if isinstance(ctx.children[2], antlr4.tree.Tree.TerminalNodeImpl): # First missing
+                expression2 = ctx.children[3]
+                expression3 = ctx.children[5]
+            elif isinstance(ctx.children[4], antlr4.tree.Tree.TerminalNodeImpl): # Sec missing
+                expression1 = ctx.children[2]
+                expression3 = ctx.children[5]
+            else: # third(last) missing
+                expression1 = ctx.children[2]
+                expression2 = ctx.children[4]
+        elif len(ctx.children) == 7: # Two statements missing
+            # Find which one exists
+            if isinstance(ctx.children[2], ECMAScriptParser.ECMAScriptParser.ExpressionSequenceContext): # First provided
+                expression1 = ctx.children[2]
+            elif isinstance(ctx.children[3], ECMAScriptParser.ECMAScriptParser.ExpressionSequenceContext): # Second provided
+                expression2 = ctx.children[3]
+            else: # Third provided
+                expression3 = ctx.children[4]
+        #else: # all missing, no need to do anythin
+        print("In FOR-LOOP")
+        #raise Utils.UnimplementedVisitorException(ctx)
+        # Evaluate the for-loop:
+        expression1.accept(self)
+        while expression2.accept(self):
+            # Execute the body
+            if ctx.children[-1].accept(self) == "BREAK-LOOP":
+                break
+            # Execute last statement is for-loop
+            expression3.accept(self)
 
 
     # Visit a parse tree produced by ECMAScriptParser#caseBlock.
@@ -401,7 +537,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#objectLiteral.
     def visitObjectLiteral(self, ctx):
-        print("visitObjectLiteral - #################################")
+        #print("visitObjectLiteral - #################################")
         raise Utils.UnimplementedVisitorException(ctx)
 
 
@@ -412,12 +548,26 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#breakStatement.
     def visitBreakStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #raise Utils.UnimplementedVisitorException(ctx)
+        # TODO: Improve this
+        return "BREAK-LOOP"
 
 
     # Visit a parse tree produced by ECMAScriptParser#ifStatement.
     def visitIfStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        #print("###########################")
+        #print(ctx.children)
+        #print("")
+        # TODO: Cleanup, could probably remove the else-statement
+        if not len(ctx.children) == 5 and not len(ctx.children) == 7:
+            raise Utils.UnimplementedVisitorException(ctx)
+        if ctx.children[2].accept(self):
+            ctx.children[4].accept(self)
+        elif len(ctx.children) == 7:
+            ctx.children[6].accept(self)
+        else:
+            return None
+            
 
 
     # Visit a parse tree produced by ECMAScriptParser#reservedWord.
@@ -427,7 +577,13 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#variableDeclaration.
     def visitVariableDeclaration(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # TODO: Make sure it is not a redeclaration
+        variable_name = ctx.children[0].accept(self)
+        value = None
+        if len(ctx.children) == 2:
+            value = ctx.children[1].accept(self)
+        return (variable_name, value)
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#finallyProduction.
@@ -437,7 +593,12 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#IdentifierExpression.
     def visitIdentifierExpression(self, ctx):
-      return self.environment.value(ctx.children[0].accept(self))
+        # TODO: Make sure that this is a good place to convert to float, probably not...
+        res = self.environment.value(ctx.children[0].accept(self))
+        if isinstance(res, int):
+            return float(res)
+        else:
+            return res
 
 
     # Visit a parse tree produced by ECMAScriptParser#propertyName.
@@ -467,7 +628,13 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#variableDeclarationList.
     def visitVariableDeclarationList(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        args = []
+        for c in ctx.children:
+            if(not isinstance(c, antlr4.tree.Tree.TerminalNodeImpl)): # Skip ","
+                args.append(c.accept(self))
+        return args
+        #return ctx.children[0].accept(self)
+        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#functionBody.
@@ -482,6 +649,17 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#UnaryAssignmentExpression.
     def visitUnaryAssignmentExpression(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # It seems as if there is no way to determine if its pre- or postincrement
+        # other than the position of IncrementOperatorContext in children
+        # NOTE: It seem post increment is handled elsewhere...
+        # Handle preincrement first
+        if isinstance(ctx.children[1], antlr4.tree.Tree.TerminalNodeImpl):
+            func = ctx.children[0].accept(self)
+            var_name = ctx.children[1].accept(self)
+            res = func(self.environment.value(var_name))
+            self.environment.setVariable(var_name, res)
+            return float(res)
+        else:
+            raise Utils.UnimplementedVisitorException(ctx)
 
 
