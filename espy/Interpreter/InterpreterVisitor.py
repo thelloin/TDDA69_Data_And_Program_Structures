@@ -176,10 +176,18 @@ class InterpreterVisitor(ECMAScriptVisitor):
     # Visit a parse tree produced by ECMAScriptParser#statementList.
     def visitStatementList(self, ctx):
         #raise Utils.UnimplementedVisitorException(ctx)
-        res = self.visitChildren(ctx)
-        print("type of res:", type(res))
-        print("res:", res)
-        return res
+        #res = self.visitChildren(ctx)
+        #print("type of res:", type(res))
+        #print("res:", res)
+        #return res
+        #print("CHILDREN:", ctx.children)
+        for c in ctx.children:
+            res = c.accept(self)
+            if res == "BREAK-LOOP":
+                return "BREAK-LOOP"
+            elif res == "CONTINUE-LOOP":
+                # Skip the remaining statements
+                return "CONTINUE-LOOP"
 
 
     # Visit a parse tree produced by ECMAScriptParser#PropertyGetter.
@@ -190,12 +198,17 @@ class InterpreterVisitor(ECMAScriptVisitor):
     # Visit a parse tree produced by ECMAScriptParser#block.
     def visitBlock(self, ctx):
         #raise Utils.UnimplementedVisitorException(ctx)
-        return ctx.children[1].accept(self)
+        #print("IN BLOCK")
+        #print("Children of block:", ctx.children)
+        #print("Children of second child:", ctx.children[1].children)
+        res = ctx.children[1].accept(self)
+        #print("The res:",res)
+        return res
 
 
     # Visit a parse tree produced by ECMAScriptParser#expressionStatement.
     def visitExpressionStatement(self, ctx):
-      self.visitChildren(ctx)
+      return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#keyword.
@@ -369,7 +382,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#statements.
     def visitStatements(self, ctx):
-        self.visitChildren(ctx)
+        #print("/////////////////////////////////////")
+        return self.visitChildren(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#UnaryExpression.
@@ -402,8 +416,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
             res = ctx.children[4].accept(self)
             if res == "BREAK-LOOP":
                 break
-            elif res == "CONTINUE":
-                continue
+            #elif res == "CONTINUE":
+            #    continue
             #i = i + 1
             #if i == 4:
             #    break
@@ -461,7 +475,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#statement.
     def visitStatement(self, ctx):
-      return self.visitChildren(ctx)
+        res = ctx.children[0].accept(self)
+        return res
 
     class MockExpression(object):
         def __init__(self):
@@ -509,7 +524,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
             else: # Third provided
                 expression3 = ctx.children[4]
         #else: # all missing, no need to do anythin
-        print("In FOR-LOOP")
+        #print("In FOR-LOOP")
         #raise Utils.UnimplementedVisitorException(ctx)
         # Evaluate the for-loop:
         expression1.accept(self)
@@ -517,7 +532,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
             # Execute the body
             if ctx.children[-1].accept(self) == "BREAK-LOOP":
                 break
-            # Execute last statement is for-loop
+            # Execute last statement in for-loop
             expression3.accept(self)
 
 
@@ -555,17 +570,15 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#ifStatement.
     def visitIfStatement(self, ctx):
-        #print("###########################")
-        #print(ctx.children)
-        #print("")
-        # TODO: Cleanup, could probably remove the else-statement
         if not len(ctx.children) == 5 and not len(ctx.children) == 7:
             raise Utils.UnimplementedVisitorException(ctx)
+        
         if ctx.children[2].accept(self):
-            ctx.children[4].accept(self)
+            return ctx.children[4].accept(self)
         elif len(ctx.children) == 7:
-            ctx.children[6].accept(self)
+            return ctx.children[6].accept(self)
         else:
+            # The expression evaluated to false and no else clause:
             return None
             
 
@@ -613,7 +626,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#continueStatement.
     def visitContinueStatement(self, ctx):
-        raise Utils.UnimplementedVisitorException(ctx)
+        # TODO: Improve this
+        return "CONTINUE-LOOP"
 
 
     # Visit a parse tree produced by ECMAScriptParser#caseClause.
@@ -633,8 +647,6 @@ class InterpreterVisitor(ECMAScriptVisitor):
             if(not isinstance(c, antlr4.tree.Tree.TerminalNodeImpl)): # Skip ","
                 args.append(c.accept(self))
         return args
-        #return ctx.children[0].accept(self)
-        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#functionBody.
