@@ -23,9 +23,14 @@ class ObjectModule:
     return obj
   
   def defineProperty(self, this, obj, name, param):
-    prop = Property(obj)
-    if(hasattr(param, 'get')):
-      prop.getter = list(param.get)[1]
-    if(hasattr(param, 'set')):
-      prop.setter = list(param.set)[1]
+    prop = Property(obj, param.getter, param.setter)
+    #print("IN DEFINE PROPERTY")
+    #print(type(param))
+    #if(hasattr(param, 'get')):
+    #  print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
+    #  prop.getter = list(param.get)[1]
+    #if(hasattr(param, 'set')):
+    #  prop.setter = list(param.set)[1]
+    #prop.getter = lambda this: getattr(this, str(param))
+    #prop.setter = lambda this, val: setattr(this, param, val)
     setattr(obj, name, prop)
