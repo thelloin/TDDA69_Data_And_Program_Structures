@@ -1,0 +1,26 @@
+#!/bin/bash
+
+TEST_NAME=$2
+ESPY_DIR="`pwd`/$1"
+
+DIR=$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+
+if [ -z "$TEST_NAME" ]
+then
+  TEST_NAME="all"
+fi
+
+if [ $TEST_NAME = "all" -o $TEST_NAME = "bound_checking_decorator" ]
+then
+  PYTHONPATH="$ESPY_DIR:$PYTHONPATH" "$DIR"/Tests/TestBoundCheckingDecorator.py
+fi
+
+if [ $TEST_NAME = "all" -o $TEST_NAME = "log_timing_decorator" ]
+then
+  PYTHONPATH="$ESPY_DIR:$PYTHONPATH" "$DIR"/Tests/TestLogTimingDecorator.py
+fi
+
+if [ $TEST_NAME = "all" -o $TEST_NAME = "apply_template" ]
+then
+  PYTHONPATH="$ESPY_DIR:$PYTHONPATH" "$DIR"/Tests/TestApplyTemplate.py
+fi
