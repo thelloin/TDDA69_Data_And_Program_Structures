@@ -16,13 +16,10 @@ def apply_template(bs, f_body, rs, f_return):
 
         class T(ast.NodeTransformer):
             def visit_Expr(self, node):
-                if hasattr(node.value, 'id'):
-                    if (node.value.id == '__body__'):
-                        return body_node
-                    elif (node.value.id == '__return__'):
-                        return return_node
-                    else:
-                        return node
+                if (node.value.id == bs):
+                    return body_node
+                elif (node.value.id == rs):
+                    return return_node
                 else:
                     return node
 
