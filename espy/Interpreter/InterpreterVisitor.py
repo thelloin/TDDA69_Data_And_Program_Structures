@@ -13,6 +13,8 @@ from Interpreter.Object import Object, ObjectModule
 from Interpreter.Property import Property
 from Interpreter.Function import Function
 
+from pprint import pprint # for printing attributes of an object
+
 # visitObjectLiteralExpression on line 442 convert res from list to dict 
 class InterpreterVisitor(ECMAScriptVisitor):
 
@@ -333,8 +335,8 @@ class InterpreterVisitor(ECMAScriptVisitor):
     def visitMemberDotExpression(self, ctx):
       obj    = ctx.children[0].accept(self)
       member = ctx.children[2].accept(self)
-      print("visitMemberDotExpression called")
-      print(type(obj))
+      #print("visitMemberDotExpression called")
+      #print(type(obj))
       # As of now, declared objects are stored as dicts, handle those separatly
       if isinstance(obj, Interpreter.Object.ObjectModule):
           #val = obj[member]
@@ -343,8 +345,16 @@ class InterpreterVisitor(ECMAScriptVisitor):
           #return obj[member]
           print("############## IN IF ####################")
           res = getattr(obj, member)
-          print(type(res))
-          print(res.get())
+          #print(type(res))
+          print('7', getattr(obj, '7').get())
+          print('color', getattr(obj, 'color').get())
+          print('km', getattr(obj, 'km').get())
+          print('model', getattr(obj, 'model').get())
+          print('type', getattr(obj, 'type').get())
+          print('Looking for the value for member:', member)
+          #print(res.get())
+          #pprint(vars(obj))
+          print('###########################################')
           
           return getattr(obj, member).get()
       return getattr(obj, member)
@@ -389,10 +399,10 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#AssignmentOperatorExpression.
     def visitAssignmentOperatorExpression(self, ctx):
-        print("%%%%%%%%%%%%%¤¤¤¤¤¤¤¤¤¤¤")
-        print(ctx.children)
-        print("Length of children:", len(ctx.children))
-        print()
+        #print("%%%%%%%%%%%%%¤¤¤¤¤¤¤¤¤¤¤")
+        #print(ctx.children)
+        #print("Length of children:", len(ctx.children))
+        #print()
 
         # Handle the case when assigning to array element
         if len(ctx.children) == 6: # TODO: Improve this check
@@ -472,19 +482,21 @@ class InterpreterVisitor(ECMAScriptVisitor):
         # create objectmodule
         obj = ObjectModule()
         #print("We are here")
-        print(ctx.children)
+        #print(ctx.children)
         
         # res is a dict with propname as key and val as value
         res = ctx.children[0].accept(self)
         print("result:")
         print(res)
-        print(type(res))
+        #print(type(res))
         #raise Utils.UnimplementedVisitorException(ctx)
         for key, value in res.items():
             #setattr(obj, key, val)
             #prop = Property(obj)
-            g = lambda this: getattr(this, key)
-            s = lambda this, val: setattr(this, key, val)
+            #g = lambda this: getattr(this, key)
+            #s = lambda this, val: setattr(this, key, val)
+            g = lambda this: res[key]
+            s = lambda this, val: res.update(key=val)
             prop = Property(obj, g, s)
             #print(type(value))
             #prop.getter = lambda this: return value

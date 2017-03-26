@@ -30,6 +30,7 @@ class Property:
     '''
     Get the value or raise WriteOnlyException
     '''
+    print('This should be called @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
     if self.getter == None:
       raise WriteOnlyException()
     else:
@@ -39,6 +40,7 @@ class Property:
     '''
     Set the value or raise ReadOnlyException
     '''
+    print('This should not be called @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
     if self.setter == None:
       raise ReadOnlyException()
     else:

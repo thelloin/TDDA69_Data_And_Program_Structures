@@ -24,7 +24,8 @@ class ObjectModule:
   
   def defineProperty(self, this, obj, name, param):
     prop = Property(obj, param.getter, param.setter)
-    #print("IN DEFINE PROPERTY")
+    print("IN DEFINE PROPERTY")
+    print(name)
     #print(type(param))
     #if(hasattr(param, 'get')):
     #  print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
@@ -34,3 +35,5 @@ class ObjectModule:
     #prop.getter = lambda this: getattr(this, str(param))
     #prop.setter = lambda this, val: setattr(this, param, val)
     setattr(obj, name, prop)
+    print('Test in defineProp:')
+    print(getattr(obj, name).get())
