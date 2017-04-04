@@ -15,7 +15,6 @@ from Interpreter.Function import Function
 
 from pprint import pprint # for printing attributes of an object
 
-# visitObjectLiteralExpression on line 442 convert res from list to dict 
 class InterpreterVisitor(ECMAScriptVisitor):
 
     def __init__(self, environment = Environment(), input=None):
@@ -38,7 +37,6 @@ class InterpreterVisitor(ECMAScriptVisitor):
               return int(node.symbol.text)
           except ValueError:
               return float(node.symbol.text)
-          #return float(node.symbol.text)
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.HexIntegerLiteral: # 56
           return float(int(node.symbol.text, 0))
       elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.StringLiteral: # 101
@@ -55,16 +53,13 @@ class InterpreterVisitor(ECMAScriptVisitor):
         expr = ctx.children[2].accept(self)
         if isinstance(expr, int):
             expr = float(expr)
-        #return (ctx.children[0].accept(self), ctx.children[2].accept(self))
         return (name, expr)
-        raise Utils.UnimplementedVisitorException(ctx)
+
 
 
     # Visit a parse tree produced by ECMAScriptParser#assignmentOperator.
     def visitAssignmentOperator(self, ctx):
-        # Idea is to return a lambda which performs the right operator
-        #print("//////////////")
-        #print(ctx.children[0].symbol.type)
+        # Returns a lambda which performs the right operator
         node = ctx.children[0]
         if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.Assign: # 11
             return lambda x, y: y
@@ -105,26 +100,6 @@ class InterpreterVisitor(ECMAScriptVisitor):
         args = ctx.children[1].accept(self)
         if(args == None): args = []
 
-        #print("In visitArgumentExpression")
-        #print(func)
-        #print(args)
-
-        # If a local function is called, func will be a list, NO LONGER TRUE
-        # BECAUSE I NOW USE THE FUNCTION CLASS TO REPRESENT FUNCTIONS
-        """if isinstance(func, list):
-            previous_environment = self.environment
-            self.environment = Environment(func[2])
-            for i in range(len(args)):
-                self.environment.defineVariable(func[0][i], args[i])
-            for c in func[1]:
-                res = c.accept(self)
-                if isinstance(res, tuple) and res[0] == "RETURN":
-                    res = res[1]
-                    break
-            self.environment = previous_environment
-            return res
-        """
-
         res = func(None, *args)
         if isinstance(res, int):
             res = float(res)
@@ -143,12 +118,6 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#BinaryExpression.
     def visitBinaryExpression(self, ctx):
-        #print("# of children: ", len(ctx.children))
-        #print("# of children in b_context: ", len(ctx.children[0].children))
-        #print("types of children in b_context: ", ctx.children[0].children)
-        #print("###############################")
-        #print("Type of operator: ", ctx.children[1].symbol.type)
-
         node = ctx.children[1]
 
         # Handle AND and OR first to achieve normal-order evaluation
@@ -208,18 +177,11 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#initialiser.
     def visitInitialiser(self, ctx):
-        #raise Utils.UnimplementedVisitorException(ctx)
         return ctx.children[1].accept(self)
 
 
     # Visit a parse tree produced by ECMAScriptParser#statementList.
     def visitStatementList(self, ctx):
-        #raise Utils.UnimplementedVisitorException(ctx)
-        #res = self.visitChildren(ctx)
-        #print("type of res:", type(res))
-        #print("res:", res)
-        #return res
-        #print("CHILDREN:", ctx.children)
         for c in ctx.children:
             res = c.accept(self)
             if res == "BREAK-LOOP":
@@ -238,12 +200,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#block.
     def visitBlock(self, ctx):
-        #raise Utils.UnimplementedVisitorException(ctx)
-        #print("IN BLOCK")
-        #print("Children of block:", ctx.children)
-        #print("Children of second child:", ctx.children[1].children)
         res = ctx.children[1].accept(self)
-        #print("The res:",res)
         return res
 
 
@@ -259,7 +216,6 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#elementList.
     def visitElementList(self, ctx):
-        #raise Utils.UnimplementedVisitorException(ctx)
         array = []
         for c in ctx.children:
             if(not isinstance(c, antlr4.tree.Tree.TerminalNodeImpl)): # Skip ","
@@ -273,21 +229,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#numericLiteral.
     def visitNumericLiteral(self, ctx):
-        """print("In visitNumericalLiteral #########################")
-        print("Type of context: ", type(ctx))
-        print("Length of children: ", len(ctx.children))
-        print("Type of children[0]: ", type(ctx.children[0]))
-        node = ctx.children[0]
-        if node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.DecimalLiteral:
-            try:
-                return int(node.symbol.text)
-            except ValueError:
-                return float(node.symbol.text)
-        elif node.symbol.type == ECMAScriptLexer.ECMAScriptLexer.HexIntegerLiteral:
-            return float(int(node.symbol.text, 0))
-        """
         return ctx.children[0].accept(self)
-        #raise Utils.UnimplementedVisitorException(ctx)
 
 
     # Visit a parse tree produced by ECMAScriptParser#ForInStatement.
@@ -335,28 +277,31 @@ class InterpreterVisitor(ECMAScriptVisitor):
     def visitMemberDotExpression(self, ctx):
       obj    = ctx.children[0].accept(self)
       member = ctx.children[2].accept(self)
+      #raise Utils.UnimplementedVisitorException(ctx)
       #print("visitMemberDotExpression called")
       #print(type(obj))
       # As of now, declared objects are stored as dicts, handle those separatly
+      """
       if isinstance(obj, Interpreter.Object.ObjectModule):
           #val = obj[member]
           #if isinstance(val, int):
           #    val = float(val)
           #return obj[member]
-          print("############## IN IF ####################")
+          #print("############## IN IF ####################")
           res = getattr(obj, member)
           #print(type(res))
-          print('7', getattr(obj, '7').get())
-          print('color', getattr(obj, 'color').get())
-          print('km', getattr(obj, 'km').get())
-          print('model', getattr(obj, 'model').get())
-          print('type', getattr(obj, 'type').get())
-          print('Looking for the value for member:', member)
+          #print('7', getattr(obj, '7').get())
+          #print('color', getattr(obj, 'color').get())
+          #print('km', getattr(obj, 'km').get())
+          #print('model', getattr(obj, 'model').get())
+          #print('type', getattr(obj, 'type').get())
+          #print('Looking for the value for member:', member)
           #print(res.get())
           #pprint(vars(obj))
-          print('###########################################')
+          #print('###########################################')
           
           return getattr(obj, member).get()
+      """
       return getattr(obj, member)
 
 
@@ -367,14 +312,20 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#MemberIndexExpression.
     def visitMemberIndexExpression(self, ctx):
-        values = ctx.children[0].accept(self)
+        obj = ctx.children[0].accept(self)
+        idx = ctx.children[2].accept(self)
+
+        if (isinstance(obj, Object)):
+            return getattr(obj, str(idx))
+        else:
+            return obj[int(idx)]
         #print("&/&/&/&/&/&/&/&/&/&/")
         #print(type(values))
         #raise Utils.UnimplementedVisitorException(ctx)
-        if isinstance(values, Interpreter.Object.ObjectModule):
-            # Add .get()
-            return getattr(values, str(ctx.children[2].accept(self)))
-        return values[ctx.children[2].accept(self)]
+        #if isinstance(values, Interpreter.Object.ObjectModule):
+        #    # Add .get()
+        #    return getattr(values, str(ctx.children[2].accept(self)))
+        #return values[ctx.children[2].accept(self)]
 
 
     # Visit a parse tree produced by ECMAScriptParser#formalParameterList.
@@ -479,18 +430,24 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#ObjectLiteralExpression.
     def visitObjectLiteralExpression(self, ctx):
-        # create objectmodule
-        obj = ObjectModule()
-        #print("We are here")
-        #print(ctx.children)
+        obj = Object()
         
-        # res is a dict with propname as key and val as value
+        # res is a list of tuples
         res = ctx.children[0].accept(self)
-        print("result:")
-        print(res)
-        #print(type(res))
-        #raise Utils.UnimplementedVisitorException(ctx)
-        for key, value in res.items():
+
+        for value in res:
+            if len(value) == 3: # Soon to be..
+                prop = Property(obj)
+                if value[0] == 'get':
+                    prop.getter = value[-1]
+                else:
+                    prop.setter = value[-1]
+                setattr(obj, str(value[1]), prop)
+            else:
+                setattr(obj, str(value[0]), value[1])
+        return obj
+        """
+        for value in res:
             #setattr(obj, key, val)
             #prop = Property(obj)
             #g = lambda this: getattr(this, key)
@@ -505,6 +462,7 @@ class InterpreterVisitor(ECMAScriptVisitor):
         
         #return res
         return obj
+        """
         #raise Utils.UnimplementedVisitorException(ctx)
 
 
@@ -743,16 +701,19 @@ class InterpreterVisitor(ECMAScriptVisitor):
 
     # Visit a parse tree produced by ECMAScriptParser#objectLiteral.
     def visitObjectLiteral(self, ctx):
-        res = {}
-        for c in ctx.children:
-            if (not isinstance(c, antlr4.tree.Tree.TerminalNodeImpl)): # Skip ',' '{' '}'
-                prop = c.accept(self)
+        res = []
+        #for c in ctx.children:
+        #    if (not isinstance(c, antlr4.tree.Tree.TerminalNodeImpl)): # Skip ',' '{' '}'
+        #        prop = c.accept(self)
                 #res.append(c.accept(self))
                 # convert prop[0] to string if it isn't already
-                prop1 = prop[0]
-                if not isinstance(prop1, str):
-                    prop1 = str(prop1)
-                res[prop1] = prop[1]
+        #        prop1 = prop[0]
+        #        if not isinstance(prop1, str):
+        #            prop1 = str(prop1)
+        #        res[prop1] = prop[1]
+        for i in range(1, len(ctx.children), 2):
+            res.append(ctx.children[i].accept(self))
+        #print(res)
         return res
         # raise Utils.UnimplementedVisitorException(ctx)
 

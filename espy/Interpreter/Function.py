@@ -54,6 +54,7 @@ class Function:
 
     # Should you create a new Environment here and add the args to that env?
     current_env = Environment(self.environment)
+
     for i in range(len(args)):
       current_env.defineVariable(self.args[i], args[i])
     # Add 'this' and 'that' to current_env??

@@ -1,6 +1,9 @@
 from VirtualMachine.Stack import Stack
 from VirtualMachine.OpCode import OpCode
-from VirtualMachine.Environment import Environment
+#from VirtualMachine.Environment import Environment
+
+from Interpreter.Environment import Environment
+from Interpreter.Object import Object
 
 class Executor:
   '''
@@ -24,7 +27,14 @@ class Executor:
     self.opmaps[OpCode.DCL] = Executor.execute_dcl
     self.opmaps[OpCode.LOAD_MEMBER] = Executor.execute_load_member
     self.opmaps[OpCode.STORE_MEMBER] = Executor.execute_store_member
+    self.opmaps[OpCode.LOAD_INDEX] = Executor.execute_load_index
+    self.opmaps[OpCode.STORE_INDEX] = Executor.execute_store_index
     # Control
+    self.opmaps[OpCode.JMP] = Executor.execute_jmp
+    self.opmaps[OpCode.IFJMP] = Executor.execute_ifjmp
+    self.opmaps[OpCode.UNLESSJMP] = Executor.execute_unlessjmp
+    self.opmaps[OpCode.CALL] = Executor.execute_call
+    self.opmaps[OpCode.NEW] = Executor.execute_new
     # Exceptions
     # Array and Objects creation
     # Binary arithmetic operation
@@ -37,9 +47,8 @@ class Executor:
     '''
     Execute the program given in argument
     '''
-    
-    # You might have to modify this later.
-    for inst in program.instructions:
+
+    while self.current_index < len(program.instructions):
       inst = program.instructions[self.current_index]
       f = self.opmaps[inst.opcode]
       
@@ -124,3 +133,69 @@ class Executor:
     # Push back the value
     self.execute_push(val)
     
+  def execute_load_index(self):
+    '''
+    Execute the LOAD_INDEX instruction
+    '''
+    stack = self.execute_pop(2)
+
+    # Handle two cases of object(2nd stack element), list and Object
+    if isinstance(stack[1], list):
+      if isinstance(stack[0], int):
+        self.execute_push(stack[1][stack[0]])
+      elif isinstance(stack[0], str) and stack[0] == 'length':
+        self.execute_push(len(stack[1]))
+    else:
+      self.execute_push(getattr(stack[1], stack[0]))
+
+  def execute_store_index(self):
+    '''
+    Execute the STORE_INDEX instruction
+    '''
+    stack = self.execute_pop(3)
+
+    # Handle two cases of object(2nd stack element), list and Object
+    if isinstance(stack[1], list):
+      stack[1][stack[0]] = stack[2]
+    else:
+      setattr(stack[1], stack[0], stack[2])
+
+    self.execute_push(stack[2])
+
+  def execute_jmp(self, idx):
+    '''
+    Execute the JMP instruction
+    '''
+    self.current_index = idx - 1 # -1 to current_index because we add 1 after function return
+
+  def execute_ifjmp(self, idx):
+    '''
+    Execute the IFJMP instruction
+    '''
+    if self.execute_pop(1)[0]:
+      self.current_index = idx - 1 # -1 to current_index because we add 1 after function return
+
+  def execute_unlessjmp(self, idx):
+    '''
+    Execute the UNLESSJMP instruction
+    '''
+    if not self.execute_pop(1)[0]:
+      self.current_index = idx - 1 # -1 for the same reason as above
+
+  def execute_call(self, argCount):
+    '''
+    Execute the CALL instruction
+    '''
+    
+    func = self.execute_pop(1)[0]
+    args = []
+    if argCount > 0:
+      args = self.execute_pop(argCount)
+    
+    self.execute_push(func.call(None, Object(), *args))
+
+  def execute_new(self, argCount):
+    '''
+    Execute the NEW instruction
+    '''
+    pass
