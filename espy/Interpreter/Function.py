@@ -22,7 +22,6 @@ class Function:
     This creates a new function with a set of args (which is an array of string with the name of the variables used as arguments), the global environment
     used when defining the function and a lambda function defining the body to be called (should take one single argument, which is the environment)
     '''
-
     self.args = args
     self.environment = environment
     self.body = body

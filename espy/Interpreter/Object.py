@@ -30,9 +30,11 @@ class ObjectModule:
     #print(type(param))
     if(hasattr(param, 'get')):
       #print("¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤")
-      prop.getter = list(param.get)[1]
+      #prop.getter = list(param.get)[1]
+      prop.getter = param.get
     if(hasattr(param, 'set')):
-      prop.setter = list(param.set)[1]
+      #prop.setter = list(param.set)[1]
+      prop.setter = param.set
     #prop.getter = lambda this: getattr(this, str(param))
     #prop.setter = lambda this, val: setattr(this, param, val)
     setattr(obj[1], name, prop)
