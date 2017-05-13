@@ -224,7 +224,7 @@ class TestExecutor(unittest.TestCase):
     (stack, env) = self.run_test_executor( [[OpCode.PUSH, 1.0], [OpCode.PUSH, 'a'], [OpCode.PUSH, 2.0], [OpCode.PUSH, 'b'], [OpCode.MAKE_OBJECT, 2]], [Object()], {}, {})
     self.assertEqual(stack[0].a, 1.0)
     self.assertEqual(stack[0].b, 2.0)
-  '''
+  
   def test_042_make_function(self):
     args = ['a', 'b']
     code = Code()
@@ -253,7 +253,7 @@ class TestExecutor(unittest.TestCase):
     self.run_test_executor( [[OpCode.PUSH, obj], [OpCode.PUSH, f2], [OpCode.PUSH, 'test'], [OpCode.MAKE_GETTER] ], [obj], {}, {})
     self.assertEqual(obj.test.setter, f)
     self.assertEqual(obj.test.getter, f2)
-  '''
+  
   def run_test_binary(self, opcode, arg1, arg2, result):
     self.run_test_executor([[OpCode.PUSH, arg1], [OpCode.PUSH, arg2], [opcode]], [result], {}, {})
   

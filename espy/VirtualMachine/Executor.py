@@ -1,11 +1,12 @@
 from VirtualMachine.Stack import Stack
 from VirtualMachine.OpCode import OpCode
-#from VirtualMachine.Environment import Environment
 
 from Interpreter.Environment import Environment
 from Interpreter.Object import Object
 from Interpreter.ControlExceptions import ReturnException
 from Interpreter.ESException import ESException
+from Interpreter.Function import Function
+from Interpreter.Property import Property
 
 class Executor:
   '''
@@ -15,6 +16,8 @@ class Executor:
     self.environment = environment
     self.stack  = Stack()
     self.current_index = 0
+    self.return_values = Stack() # Stack to push/pop return values
+    self.try_addresses = Stack() # Stack to push/pop addresses
 
     # The following code acts as a switch statements for OpCodes
     self.opmaps  = {}
@@ -46,7 +49,9 @@ class Executor:
     # Array and Objects creation
     self.opmaps[OpCode.MAKE_ARRAY] = Executor.execute_make_array
     self.opmaps[OpCode.MAKE_OBJECT] = Executor.execute_make_object
-    #self.opmaps[OpCode.MAKE_FUNC] = Executor.execute_make_func
+    self.opmaps[OpCode.MAKE_FUNC] = Executor.execute_make_func
+    self.opmaps[OpCode.MAKE_GETTER] = Executor.execute_make_getter
+    self.opmaps[OpCode.MAKE_SETTER] = Executor.execute_make_setter
     # Binary arithmetic operation
     self.opmaps[OpCode.ADD] = Executor.execute_add
     self.opmaps[OpCode.SUB] = Executor.execute_sub
@@ -76,12 +81,26 @@ class Executor:
     '''
     Execute the program given in argument
     '''
+    self.current_index = 0
 
     while self.current_index < len(program.instructions):
       inst = program.instructions[self.current_index]
       f = self.opmaps[inst.opcode]
       
-      f(self, *inst.params)
+      try:
+        f(self, *inst.params)
+      except ESException as e:
+        if self.try_addresses.size() == 0: # Check if we have an address to jump to
+          raise e
+        else:
+          self.current_index = self.try_addresses.pop()
+          self.stack.push(e.value)
+      except ReturnException as e:
+        if self.environment.parent == None: # Check if we're not executing a function
+          raise e
+        else:
+          self.return_values.push(e.value)
+
       self.current_index += 1
 
   def execute_push(self, value):
@@ -122,9 +141,9 @@ class Executor:
     '''
     Execute the STORE instruction
     '''
-    popped = self.execute_pop(1)
-    self.environment.setVariable(varName, popped[0])
-    self.execute_push(popped[0])
+    popped = self.stack.pop()
+    self.environment.setVariable(varName, popped)
+    self.execute_push(popped)
     # Alternative: dup -> pop -> setvariable
 
   def execute_dcl(self, varName):
@@ -137,7 +156,7 @@ class Executor:
     '''
     Execute the LOAD_MEMBER instruction
     '''
-    obj = self.execute_pop(1)[0]
+    obj = self.stack.pop()
     member = None
     if isinstance(obj, list):
       if isinstance(varName, int):
@@ -146,21 +165,20 @@ class Executor:
         member = len(obj)
     else:
       member = getattr(obj, varName)
-    self.execute_push(member)
+    self.stack.push(member)
 
   def execute_store_member(self, varName):
     '''
     Execture the STORE_MEMBER instruction
     '''
-    obj = self.execute_pop(1)[0]
-    val = self.execute_pop(1)[0]
+    obj = self.stack.pop()
+    val = self.stack.pop()
     if isinstance(obj, list):
       obj[varName] = val
     else:
       setattr(obj, varName, val)
 
-    # Push back the value
-    self.execute_push(val)
+    self.stack.push(val)
     
   def execute_load_index(self):
     '''
@@ -201,66 +219,63 @@ class Executor:
     '''
     Execute the IFJMP instruction
     '''
-    if self.execute_pop(1)[0]:
+    if self.stack.pop():
       self.current_index = idx - 1 # -1 to current_index because we add 1 after function return
 
   def execute_unlessjmp(self, idx):
     '''
     Execute the UNLESSJMP instruction
     '''
-    if not self.execute_pop(1)[0]:
+    if not self.stack.pop():
       self.current_index = idx - 1 # -1 for the same reason as above
 
   def execute_call(self, argCount):
     '''
     Execute the CALL instruction
     '''
-    # TODO: Ask about this
-    func = self.execute_pop(1)[0]
+    func = self.stack.pop()
     args = []
     if argCount > 0:
       args = self.execute_pop(argCount)
-    #print()
-    #print(args)
-    #print('testing to call func(*args)')
-    #print(func(Object(), *args))
-    self.execute_push(func.call(None, Object(), *args))
+
+    old_index = self.current_index
+    func(None, *args)
+    self.current_index = old_index
+
+    if self.return_values.size() == 0:
+      self.execute_push(None)
+    else:
+      self.execute_push(self.return_values.pop())
 
   def execute_new(self, argCount):
     '''
     Execute the NEW instruction
     '''
-    # TODO: Ask about this
-    func = self.execute_pop(1)[0]
+    func = self.stack.pop()
     args = []
+    obj = Object()
     if argCount > 0:
       args = self.execute_pop(argCount)
-    #print('new')
-    #print(args)
+
     args = list(reversed(args))
-    res = func.call(None, Object(), *args)
-    print('res',res)
-    obj = Object()
+
+    func(obj, *args)
+
     self.execute_push(obj)
 
   def execute_ret(self):
     '''
     Execute the RET instruction
     '''
-    # TODO: Ask about this
-    idx = self.execute_pop(1)[0]
-    #if isinstance(idx, int):
-    #  self.current_index = idx - 1
-    #else:
-    raise ReturnException(idx)
+    return_value = self.stack.pop()
+    raise ReturnException(return_value)
 
   def execute_switch(self, default):
     '''
     Execute the SWITCH instruction
     '''
-    #print('Len of stack:', self.stack.size())
     s = self.execute_pop(self.stack.size())
-    #print(s)
+
     index_map = s[0] # Probably iterate stack here to find map
     if s[-1] in index_map:
       self.current_index = index_map[s[-1]] - 1
@@ -271,36 +286,19 @@ class Executor:
     '''
     Execute the TRY_PUSH instruction
     '''
-    self.stack.push( ESException(idx) )
+    self.try_addresses.push(idx)
 
   def execute_throw(self):
     '''
     Execute the THROW instruction
     '''
-    # According to the tests, there seems we have to restore the stack
-    # after a throw
-    temp_stack = Stack()
-    while self.stack.size() > 0:
-      info = self.stack.pop()
-      if isinstance(info, ESException):
-        self.current_index = info.value - 1
-        while temp_stack.size() > 0:
-          self.stack.push( temp_stack.pop() )
-        return
-      temp_stack.push(info)
-    raise ESException("THROW")
+    raise ESException(self.stack.pop())
 
   def execute_try_pop(self):
     '''
     Execute the TRY_POP instruction
     '''
-    # Is TRY_POP supposed to pop everyting on the stack
-    # until a TRY_PUSH is found?
-    while self.stack.size() > 0:
-      info = self.stack.pop()
-      if isinstance(info, ESException):
-        return
-    raise ESException("TRY_POP")
+    self.try_addresses.pop()
 
   def execute_make_array(self, count):
     '''
@@ -315,22 +313,58 @@ class Executor:
     '''
     arr = self.execute_pop(count*2)
     obj = Object()
-    #print("###########")
-    #print(len(arr))
+
     for i in range(0,len(arr),2):
-      #print(i,arr[i])
       setattr(obj, arr[i], arr[i+1])
     self.stack.push(obj)
 
-
-  #####################################################
-  # This and two more opcodes are yet not implemented #
-  #####################################################
   def execute_make_func(self):
     '''
     Execute the MAKE_FUNC instruction
     '''
-    pass
+    code = self.stack.pop()
+    args = self.stack.pop()
+    def fun(env):
+      old_env = self.environment
+      self.environment = env
+      self.execute(code)
+      self.environment = old_env
+
+    self.stack.push(Function(args, self.environment, fun))
+
+  def execute_make_getter(self):
+    '''
+    Execute the MAKE_GETTER instruction
+    '''
+    name = self.stack.pop()
+    func = self.stack.pop()
+    obj = self.stack.pop()
+
+    if hasattr(obj, name):
+      prop = getattr(obj, name)
+      prop.getter = func
+    else:
+      prop = Property(obj)
+      prop.getter = func
+      setattr(obj, name, prop)
+    self.stack.push(obj)
+
+  def execute_make_setter(self):
+    '''
+    Execute the MAKE_SETTER instruction
+    '''
+    name = self.stack.pop()
+    func = self.stack.pop()
+    obj = self.stack.pop()
+
+    if hasattr(obj, name):
+      prop = getattr(obj, name)
+      prop.setter = func
+    else:
+      prop = Property(obj)
+      prop.setter = func
+      setattr(obj, name, prop)
+    self.stack.push(obj)
 
   def bnry_helper(self, operator_func):
     '''
