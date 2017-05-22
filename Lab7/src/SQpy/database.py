@@ -1,6 +1,51 @@
 from .ast import token, ast
 from collections import namedtuple
+from itertools import product
 
+class Select:
+  """ select [columns] from [tables] where [condition] """
+  def __init__(self, columns, tables, condition):
+    self.columns = columns
+    self.tables = tables
+    self.condition = condition
+    self.make_row = create_make_row(self.columns)
+  def execute(self, env):
+    """ Join, filter and map rows from tables to columns """
+    from_rows = join(self.tables, env)
+    filtered_rows = filter(self.filter_fn, from_rows)
+    return map(self.make_row, filtered_rows)
+  def filter_fn(self, row):
+    if self.condition:
+      return eval(self.condition, row)
+
+def create_make_row(description):
+  """ Returns a function from an input environment (dict) to an output row.
+      description -- a comma-separated list of [expression] as [column name] """
+  columns = description.split(',')
+  expressions, names = [], []
+  for column in columns:
+    if 'as' in column:
+      expression, name = column.split('as')
+    else:
+      expression, name = column, column
+    expressions.append(expression)
+    names.append(name.lstrip())
+  row = namedtuple('Row', names)
+  return lambda env: row(*[eval(e, env) for e in expressions])
+
+def join(tables, env):
+  """ Returns an iterator over dictionaries from names to values in a row """
+  names = tables.split(',')
+  joined_rows = product(*[env[name] for name in names])
+  return map(lambda rows: make_env(rows, names), joined_rows)
+
+def make_env(rows, names):
+  """ Create an environment of names bound to values """
+  env = dict(zip(names, rows))
+  for row in rows:
+    for name in row._fields:
+      env[name] = getattr(row, name)
+  return env
 
 class database(object):
   def __init__(self):
@@ -20,6 +65,11 @@ class database(object):
   def execute(self, query):
     ''' Execute a query '''
 
+    if isinstance(query, int):
+      return str(query)
+    if isinstance(query, str):
+      return "'" + query + "'"
+
     if query.token == token.create_table:
       Table = namedtuple(query.name, query.columns)
       self.tables_dict[query.name] = Table
@@ -36,204 +86,122 @@ class database(object):
         # Assume all columns are provided?
         self.rows[query.table].append(self.tables_dict[query.table]._make(query.values))
     elif query.token == token.delete_from:
-      #print('time for deletion')
       where = self.execute(query.where)
       # Iterate entire table
-      rows = self.rows[query.table]
-      for row in rows:
-        #print(row)
-        if where(row._asdict()):
-          #print('row:', row, 'DELETE')
-          rows.remove(row)
-        #else:
-        #  print('row:', row, 'DO NOT DELETE')
+      rows_for_one = self.rows[query.table]
+      for row in rows_for_one:
+        if eval(where, row._asdict()):
+          rows_for_one.remove(row)
 
     elif query.token == token.update:
-      #print('time for a update')
-      #print(query.set)
       where = self.execute(query.where)
-      rows = self.rows[query.table]
-      for i in range(len(rows)):
-        #print(i, rows[i])
-        if where(rows[i]._asdict()):
-          #print("this should change")
+      rows_for_one = self.rows[query.table]
+      for i in range(len(rows_for_one)):
+        if eval(where, rows_for_one[i]._asdict()):
           for item in query.set:
-            #print(item[0], item[1])
-            #print("poi", rows[i].name)
-            #print("asdfa",rows[i][item[0]])
-            #rows[i][item[0]] = item[1]
-            #print(rows[i]._asdict()[item[0]])
-            #print(i, rows[i])
-            rows[i] = rows[i]._replace(**{item[0] : item[1]} )
-            #rows[i] = rows[i]._replace(item)
+            rows_for_one[i] = rows_for_one[i]._replace(**{item[0] : item[1]} )
+
 
     elif query.token == token.select:
-      print("select statement")
-      #print(query.columns)
-      #print(type(query.columns))
-      #print(query.from_table)
-      res = []
-      count = 0
-      is_count = False
-      avg = []
-      is_avg = False
-      # check for where clause
-      where = None
+
+      tables = query.from_table
+      where_new = "True"
       if hasattr(query, 'where'):
-        where = self.execute(query.where)
+        where_new = self.execute(query.where)
+      if hasattr(query, 'joins'):
+        where_new = ''
+        for join in query.joins:
+          tables += ',' + join.table
+          if where_new == '':
+            where_new = self.execute(join.on)
+          else:
+            where_new += ' and ' + self.execute(join.on)
+      columns_str, count, avg = self.create_columns_str(query.columns, query.from_table)
+      sel = Select(columns_str, tables, where_new)
+      result = list(sel.execute(self.rows))
 
-      if isinstance(query.columns, ast) and query.columns.token == token.star:
-        #print(self.rows[query.from_table])
-        res = self.rows[query.from_table]
-      else:
-        col_names = self.get_column_names(query.columns)
-        Row = namedtuple('Row', col_names)
-        vals = []
-        for row in self.rows[query.from_table]:
-          for col in query.columns:
-            if isinstance(col, str):
-              if where == None or where(row._asdict()):
-                vals.append(row._asdict()[col])
-                #print("vals", vals)
-            elif isinstance(col, tuple):
-              #print('FOUND A TUPLE')
-              #print("one col:", col)
-              fun = self.execute(col[0])
-              #print("fun:",fun)
-              if isinstance(fun, tuple):
-                print("fun is a tuple and its values is:", fun)
-                if where == None or where(row._asdict()):
-                  if fun[1] == 'count':
-                    count += 1
-                    is_count = True
-                  elif fun[1] == 'avg':
-                    # Handle average here
-                    print("here we should handle average case", fun)
-                    avg.append(row._asdict()[fun[0]])
-                    is_avg = True
-              else:
-                print('where:', where)
-                if where == None or where(row._asdict()):
-                  vals.append(fun(row._asdict()))
-          if vals:
-            res.append(Row._make(vals))
-          vals = []
+      # Handle count and average here
+      if count != None or avg != None:
+        r = []
+        count_res = 0
+        avg_res = 0
+        if count != None:
+          count_res = len(result)
+          if avg != None:
+            for row in result:
+              avg_res += row._asdict()[avg]
+            avg_res = avg_res / len(result)
+        if count and avg:
+          Row = namedtuple('Row', [count, avg])
+          r.append(Row._make([count_res, avg_res]))
+          return r
+        elif count:
+          Row = namedtuple('Row', [count])
+          r.append(Row._make([count_res]))
+          return r
+        elif avg:
+          Row = namedtuple('Row', [avg])
+          r.append(Row._make([avg_res]))
+          return r
 
-      print('count', count)
-      print('avg', avg)
-      print(sum(avg)/len(avg))
-      print(res)
-      # Check for where clause
-      #if hasattr(query, 'where'):
-      #  where = self.execute(query.where)
-      #  for row in res:
-      #    if not where(row._asdict()):
-      #      res.remove(row)
-      return res
-
+      return result
+         
     elif query.token == token.fn_count:
-      return (query.field, 'count')
+      return ('count', query.field)
 
     elif query.token == token.fn_avg:
-      return (query.field, 'avg')
+      return ('avg', query.field)
 
     elif query.token == token.op_and:
-      def fun(row):
-        op1 = self.execute(query.operands[0])
-        #print('op1', op1)
-        op2 = self.execute(query.operands[1])
-        if op1(row) and op2(row):
-          return True
-        else:
-          return False
-      return fun
+      op1 = self.execute(query.operands[0])
+      op2 = self.execute(query.operands[1])
+      return op1 + ' and ' + op2
+
     elif query.token == token.op_equal:
-      def fun(row):
-        col_name = self.execute(query.operands[0])
-        #print(col_name)
-        #return row[query.operands[0].identifier[0]] == query.operands[1]
-        return row[col_name] == query.operands[1]
-      return fun
+      op1 = self.execute(query.operands[0])
+      op2 = self.execute(query.operands[1])
+      return op1 + ' == ' + op2
     elif query.token == token.op_inferior:
-      def fun(row):
-        col_name = self.execute(query.operands[0])
-        return row[col_name] < query.operands[1]
-      return fun
+      op1 = self.execute(query.operands[0])
+      op2 = self.execute(query.operands[1])
+      return op1 + ' < ' + op2
+
     elif query.token == token.op_superior:
-      def fun(row):
-        col_name = self.execute(query.operands[0])
-        return row[col_name] > query.operands[1]
-      return fun
+      op1 = self.execute(query.operands[0])
+      op2 = self.execute(query.operands[1])
+      return op1 + ' > ' + op2
     elif query.token == token.op_divide:
-      def fun(row):
-        col_name = self.execute(query.operands[0])
-        return row[col_name] / query.operands[1]
-      return fun
-      return 1
+      dividend = self.execute(query.operands[0])
+      divisor = self.execute(query.operands[1])
+      return dividend + ' / ' + divisor
     elif query.token == token.identifier:
-      return query.identifier[0]
-
-  def get_column_names(self, columns):
-    res = []
-    for col in columns:
-      if isinstance(col, str):
-        res.append(col)
-      elif isinstance(col, tuple):
-        res.append(col[1])
+      if len(query.identifier) == 1:
+        return query.identifier[0]
       else:
-        print('MAJOR ERROR IN GET COLUMNS NAMES!!!!!')
-    return res
+        return query.identifier[0] + '.' + query.identifier[1]
 
-  '''
-  def op_eval(self, ast):
-
-    print('TOKEN', ast.token)
-    if ast.token == token.op_and:
-      #def fun(row):
-      print("len(ast.operands):", len(ast.operands))
-      def fun(row):
-        op1 = self.op_eval(ast.operands[0])
-        #print('op1', op1)
-        op2 = self.op_eval(ast.operands[1])
-        if op1(row) and op2(row):
-          return True
-        else:
-          return False
-      return fun
-    elif ast.token == token.op_equal:
-      #print(dir(ast.op_equal.__dict__))
-      #print(ast.operands)
-      #print(ast.operands[0].identifier[0])
-      def fun(row):
-        #if row[ast.operands[0].identifier[0]] == ast.operands[1]:
-        #  print('RETURNING TRUE FROM OP_EQUAL')
-        #  return True
-        #else:
-        #  return False
-        return row[ast.operands[0].identifier[0]] == ast.operands[1]
-      return fun
-    elif ast.token == token.op_inferior:
-      def fun(row):
-        if row[ast.operands[0].identifier[0]] < ast.operands[1]:
-          print('RETURNING TRUE FORM OP_INFERIOR')
-          return True
-        else:
-          return False
-      return fun
-    return 'hej'
-    
-    if hasattr(ast, 'where'):
-      print('in where')
-      return self.op_eval(table, getattr(ast, 'where'))
-    elif hasattr(ast, 'op_eq'):
-      print('in op_eq')
-      return True
-    elif hasattr(ast, 'op_and'):
-      print('in op_and')
-      print('op_and', ast.op_and)
-      print('op_and.operands:', ast.operands)
-      return self.op_eval(table, ast.operands[0]) and self.op_eval(table, ast.operands[1])
+  def create_columns_str(self, columns, from_table):
+    """ Returns a correctly formatted string of columns """
+    count = None
+    avg = None
+    if isinstance(columns, ast) and columns.token == token.star:
+        return (','.join(self.fields(from_table)), count, avg)
     else:
-      return False
-    '''
-    
+      res = []
+      for column in columns:
+        if isinstance(column, str):
+          res.append(column)
+        if isinstance(column, tuple):
+          res_from_first = self.execute(column[0])
+          res_from_sec = self.execute(column[1])[1:-1]
+          if isinstance(res_from_first, tuple): # hacky thing for count and average
+            if res_from_first[0] == 'count':
+              count = res_from_sec
+            else:
+              avg = res_from_sec
+            res.append(res_from_first[1] + ' as ' + res_from_sec)
+          else:
+            res.append(res_from_first + ' as ' + res_from_sec)
+
+      return (','.join(res), count, avg)
+
